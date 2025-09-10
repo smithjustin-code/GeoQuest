@@ -150,7 +150,6 @@ const MapView = (()=>{
     poly([[65,-168],[70,-150],[72,-140],[72,-120],[70,-100],[67,-85],[62,-60],[48,-54],[49,-65],[49,-125],[54,-133],[60,-148],[65,-168]], '#0e3153');
     poly([[31,-81.5],[25.5,-80.1],[27,-82],[31,-81.5]], '#0f385e');   // Florida
     poly([[30,-114.5],[26,-112.5],[24,-110.0],[28,-113.0],[30,-114.5]], '#0f385e'); // Baja
-    // Great Lakes blobs
     function lake(la,lo,rx,ry){
       const p = project(la,lo);
       ctx.beginPath();
@@ -202,27 +201,27 @@ const MapView = (()=>{
     if(!canvas) return;
     if(!lastT) lastT=ts;
     drawBackground(); drawLand(); drawEdges(); drawCities(); drawPlane(ts);
-    raf = requestAnimationFrame(frame);
+    requestAnimationFrame(frame);
   }
   function start(){
     if(!ensureCanvas()) return;
-    if(raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(frame);
+    requestAnimationFrame(frame);
   }
-  function stop(){ if(raf) cancelAnimationFrame(raf); raf=0; }
-  function redraw(){ start(); }
-
-  return { start, stop, redraw };
+  return { start };
 })();
+
 
 // --- RENDER JOURNEY UI ---
 function renderJourney(){
   const cur = CITIES.find(c=>c.id===State.current);
-  const neighborIds = EDGES.filter(([a,b])=> a===State.current || b===State.current).map(([a,b])=> a===State.current? b : a);
+  const neighborIds = EDGES
+    .filter(([a,b])=> a===State.current || b===State.current)
+    .map(([a,b])=> a===State.current? b : a);
   const neighbors = neighborIds.map(id=> CITIES.find(c=>c.id===id));
   const canTravel = State.ap>0;
 
   let html = '';
+  // Map card
   html += `
     <div class="card mapWrap">
       <h3>Map</h3>
@@ -232,21 +231,26 @@ function renderJourney(){
         <div class="dot" style="background:#41d3c5;border:1px solid #2a8b80"></div><span>Visited</span>
         <div class="dot" style="background:#9fb3cc;border:1px solid #5b6a7d"></div><span>Unvisited</span>
       </div>
-      <div class="small" style="margin-top:6px">Tip: Click a city on the map to try to travel (route rules apply).</div>
+      <div class="small" style="margin-top:6px">Tip: Click a city on the map to travel (route rules apply).</div>
     </div>`;
 
+  // Current location
   html += `<div class="card"><h3>Current Location</h3>
-    <div class="vcard"><img class="pimg" src="${spriteForCity(cur)}" alt="">
-      <div><b>${cur.name}</b> — ${cur.country}<div class="small">Biome: ${cur.biome.replace(/_/g,' ')}</div></div>
+    <div class="vcard"><img class="pimg" src="${spriteForCity(cur)}" alt="Biome art">
+      <div><b>${cur.name}</b> — ${cur.country}
+        <div class="small">Biome: ${cur.biome.replace(/_/g,' ')}</div>
+      </div>
     </div>
     <div class="small">Travel points left: <b>${State.ap}</b>. Choose a connected destination.</div>
   </div>`;
 
+  // Destinations
   html += `<div class="card"><h3>Destinations</h3><div class="destGrid">` +
     neighbors.map(n=>`<button class="chip" ${canTravel?'':'disabled'} data-goto="${n.id}">
       <img class="pimg" alt="" src="${spriteForCity(n)}"><span>${n.name}</span>
     </button>`).join('') + `</div></div>`;
 
+  // Passport
   const recent = State.stamps.slice(-8);
   html += `<div class="card"><h3>Passport (recent)</h3><div class="list">${
     recent.length? recent.map(s=>`<span class="stamp">${s}</span>`).join('') : '<span class="small">No stamps yet.</span>'
@@ -255,11 +259,15 @@ function renderJourney(){
   document.getElementById('journey').innerHTML = html;
 
   // Bind travel buttons
-  document.querySelectorAll('[data-goto]').forEach(btn=> btn.addEventListener('click', ()=>{
-    const id = btn.getAttribute('data-goto'); const dest=CITIES.find(c=>c.id===id); onCityClick(dest);
-  }));
+  document.querySelectorAll('[data-goto]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-goto');
+      const dest = CITIES.find(c=>c.id===id);
+      onCityClick(dest);
+    });
+  });
 
-  // Start (or redraw) the map after the canvas exists
+  // Start the map after canvas exists
   MapView.start();
 }
 
