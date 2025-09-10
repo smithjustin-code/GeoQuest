@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GeoQuest: North America Trek — v2.3.4 (Assessed Events)</title>
+<style>
+  :root{ --bg:#0e1726;--panel:#121d31;--accent:#4cc9f0;--accent2:#f72585;--good:#2dd36f;--warn:#ffd166;--bad:#ef476f;--ink:#e6edf7;--muted:#93a3b8;--card:#0f223a; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 800px at 10% 10%, #17263f, var(--bg));color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;display:grid;grid-template-columns:1.2fr 1fr;gap:14px;padding:14px}
+  #journeyPane,#uiPane{background:var(--panel);border:1px solid #1f2e4a;border-radius:16px;overflow:hidden;position:relative}
+  header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg, rgba(15,34,58,.95), rgba(15,34,58,.7));padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #203250}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#0b1d33;border:1px solid #203250;color:var(--muted);font-weight:600}
+  .badge b{color:var(--ink)}
+  .pill{border:1px solid #2b3e66;background:#0f1d33;color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer}
+  .pill[disabled]{opacity:.5;cursor:not-allowed}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid #2b3e66;background:#0f223a;color:#fff;cursor:pointer;font-weight:600}
+  .btn:hover{border-color:#3e5d95}
+  .btn.primary{background:linear-gradient(180deg, #1b345a, #122747);border-color:#35558d}
+  .btn.good{background:#0e2b20;border-color:#1d5e45}
+  .btn.warn{background:#2e2811;border-color:#6f5a1d}
+  .section{padding:14px}
+  #uiPane{display:flex;flex-direction:column}
+  #log{flex:1;overflow:auto;padding:10px 14px}
+  #controls{padding:12px 14px;border-top:1px solid #203250;display:flex;flex-wrap:wrap;gap:8px}
+  .card{background:var(--card);border:1px solid #21365d;border-radius:14px;padding:12px;margin:10px 0}
+  .card h3{margin:0 0 6px 0}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row .col{flex:1 1 220px}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 10px}
+  .kv div:nth-child(odd){color:var(--muted)}
+  .small{font-size:.95rem;color:var(--muted)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
+
+  /* Journey UI */
+  #journeyWrap{height:100%;display:flex;flex-direction:column}
+  #journey{flex:1;overflow:auto;padding:12px 14px}
+  .destGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .chip{display:flex;align-items:center;gap:8px;border:1px solid #2b3e66;background:#0f1d33;color:var(--ink);padding:10px;border-radius:12px;cursor:pointer}
+  .chip[disabled]{opacity:.55;cursor:not-allowed}
+  .list{display:flex;flex-wrap:wrap;gap:8px}
+  .stamp{display:inline-flex;align-items:center;gap:6px;background:rgba(76,201,240,.12);color:#bfe9fb;border:1px dashed #4cc9f0;padding:4px 8px;border-radius:999px;font-weight:700}
+  .vcard{display:flex;gap:10px;align-items:center;background:#0f223a;border:1px solid #21365d;border-radius:10px;padding:8px;margin:8px 0}
+  .vcard .emoji{font-size:1.4rem}
+
+  /* Pixel art images */
+  .pimg{width:72px;height:72px;image-rendering:pixelated;border-radius:8px;border:1px solid #21365d;background:#071325;display:block}
+  .chip .pimg{width:40px;height:40px;border-radius:6px}
+
+  /* Modal */
+  dialog{border:none;border-radius:16px;padding:0;color:var(--ink);background:#0e1b30;max-width:min(820px,92vw)}
+  dialog::backdrop{background:rgba(0,10,20,.66)}
+  .modal{padding:16px}
+  .modal header{position:static;background:transparent;border:0;padding:0 0 10px 0}
+  .choices{display:grid;gap:8px;margin-top:10px}
+  .choice{padding:10px 12px;border:1px solid #2b3e66;border-radius:12px;background:#0a1730;cursor:pointer}
+  .choice:hover{border-color:#4c6fb1}
+  .choice.correct{border-color:#1f7a55;background:#0e2b20}
+  .choice.wrong{border-color:#7a1f37;background:#3a0f1a}
+
+  /* Fallback modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,10,20,.66);display:none;align-items:center;justify-content:center;z-index:9999}
+  .overlay .sheet{background:#0e1b30;border-radius:16px;max-width:min(820px,92vw);padding:16px;border:1px solid #21365d}
+
+  @media (max-width: 1100px){ body{grid-template-columns:1fr;grid-auto-rows:auto auto} }
+</style>
+</head>
+<body>
+  <section id="journeyPane" aria-label="Journey">
+    <div id="journeyHeader">
+      <div class="badge">GeoQuest: <b>North America Trek</b></div>
+      <div class="badge">Student: <b id="hudName">—</b></div>
+      <div class="badge">Knowledge ⭐ <b id="hudXP">0</b></div>
+      <div class="badge">Travel 🚶 <b id="hudAP">0</b></div>
+      <div class="badge">Visits 📍 <b id="hudVisits">0</b></div>
+      <div class="badge">Time ⏱️ <b id="hudTime">00:00</b></div>
+    </div>
+    <div id="journeyWrap">
+      <div id="journey"></div>
+    </div>
+  </section>
+
+  <section id="uiPane" aria-label="Game interface">
+    <header>
+      <div class="badge">Class: <b id="hudClass">—</b></div>
+      <div class="badge">Goal: <b>Earn 20 Knowledge ⭐ and visit 12 locations.</b></div>
+      <div style="margin-left:auto" class="row">
+        <button class="pill" id="btnLearn" aria-haspopup="dialog" type="button">Reference</button>
+        <button class="pill" id="btnSave" type="button">Save</button>
+        <button class="pill" id="btnReset" type="button">Reset</button>
+      </div>
+    </header>
+    <div id="log" aria-live="polite"></div>
+    <div id="controls">
+      <button id="btnStart" class="btn primary" type="button">Start / Continue</button>
+      <button id="btnQuiz" class="btn" type="button">Practice Quiz</button>
+      <button id="btnEvent" class="btn" type="button">Explore Event</button>
+      <button id="btnFinish" class="btn good" type="button">Finish &amp; Get Code</button>
+      <button id="btnVerify" class="btn warn" type="button">Verify Code (Teacher)</button>
+      <button id="btnExport" class="btn" type="button">Export Save</button>
+      <button id="btnImport" class="btn" type="button">Import Save</button>
+    </div>
+  </section>
+
+  <dialog id="modal" aria-modal="true"></dialog>
+  <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true"><div class="sheet" id="overlaySheet"></div></div>
+
+<script>
+/***************************
+ * GeoQuest: North America Trek — v2.3.4 (Assessed Events)
+ * Change: Events never grant ⭐ directly. Each event includes a 1-item CFU quiz; ⭐ awarded only on correct answer.
+ ***************************/
+
+/* ======== SETTINGS ======== */
+const SECRET_KEY = "SC7Geo2025"; // teacher: change before uploading
+const GOAL_VISITS = 12;
+const GOAL_XP = 20;
+const START_AP = 24;
+const VERSION = '2.3.4-AssessedEvents';
+
+/* ======== RNG ======== */
+let rngSeed = Date.now() & 0xffffffff;
+function srand(s){ rngSeed = (s>>>0) || 1; }
+function rand(){ let x=rngSeed; x^=x<<13; x^=x>>>17; x^=x<<5; rngSeed=x>>>0; return (rngSeed/0xffffffff); }
+function randPick(arr){ return arr[Math.floor(rand()*arr.length)] }
+
+/* ======== GRAPH (adjacency only) ======== */
+const CITIES = [
+  {id:"van", name:"Vancouver", country:"CAN", biome:"temperate_rainforest"},
+  {id:"vic", name:"Victoria", country:"CAN", biome:"temperate_rainforest"},
+  {id:"calg", name:"Calgary", country:"CAN", biome:"steppe"},
+  {id:"edm", name:"Edmonton", country:"CAN", biome:"boreal"},
+  {id:"winn", name:"Winnipeg", country:"CAN", biome:"boreal"},
+  {id:"tor", name:"Toronto", country:"CAN", biome:"temperate_forest"},
+  {id:"ott", name:"Ottawa", country:"CAN", biome:"temperate_forest"},
+  {id:"mont", name:"Montréal", country:"CAN", biome:"temperate_forest"},
+  {id:"que", name:"Québec City", country:"CAN", biome:"boreal"},
+  {id:"hal", name:"Halifax", country:"CAN", biome:"temperate_forest"},
+  {id:"stj", name:"St. John’s", country:"CAN", biome:"boreal"},
+  {id:"sea", name:"Seattle", country:"USA", biome:"temperate_rainforest"},
+  {id:"por", name:"Portland", country:"USA", biome:"temperate_rainforest"},
+  {id:"sf", name:"San Francisco", country:"USA", biome:"mediterranean"},
+  {id:"la", name:"Los Angeles", country:"USA", biome:"mediterranean"},
+  {id:"sd", name:"San Diego", country:"USA", biome:"semi_arid"},
+  {id:"phx", name:"Phoenix", country:"USA", biome:"desert"},
+  {id:"slc", name:"Salt Lake City", country:"USA", biome:"semi_arid"},
+  {id:"den", name:"Denver", country:"USA", biome:"alpine"},
+  {id:"dal", name:"Dallas", country:"USA", biome:"prairie"},
+  {id:"hou", name:"Houston", country:"USA", biome:"humid_subtropical"},
+  {id:"sa", name:"San Antonio", country:"USA", biome:"semi_arid"},
+  {id:"no", name:"New Orleans", country:"USA", biome:"wetland"},
+  {id:"minn", name:"Minneapolis", country:"USA", biome:"temperate_forest"},
+  {id:"chi", name:"Chicago", country:"USA", biome:"temperate_forest"},
+  {id:"det", name:"Detroit", country:"USA", biome:"temperate_forest"},
+  {id:"atl", name:"Atlanta", country:"USA", biome:"humid_subtropical"},
+  {id:"mia", name:"Miami", country:"USA", biome:"tropical"},
+  {id:"nyc", name:"New York City", country:"USA", biome:"temperate_forest"},
+  {id:"bos", name:"Boston", country:"USA", biome:"temperate_forest"},
+  {id:"dc", name:"Washington, DC", country:"USA", biome:"temperate_forest"},
+  {id:"clt", name:"Charlotte", country:"USA", biome:"temperate_forest"},
+  {id:"nash", name:"Nashville", country:"USA", biome:"temperate_forest"},
+  {id:"phl", name:"Philadelphia", country:"USA", biome:"temperate_forest"},
+  {id:"tij", name:"Tijuana", country:"MEX", biome:"semi_arid"},
+  {id:"herm", name:"Hermosillo", country:"MEX", biome:"desert"},
+  {id:"gdl", name:"Guadalajara", country:"MEX", biome:"temperate_highland"},
+  {id:"cdmx", name:"Mexico City", country:"MEX", biome:"temperate_highland"},
+  {id:"pue", name:"Puebla", country:"MEX", biome:"temperate_highland"},
+  {id:"oax", name:"Oaxaca", country:"MEX", biome:"tropical_seasonal"},
+  {id:"mty", name:"Monterrey", country:"MEX", biome:"semi_arid"},
+  {id:"coa", name:"Coahuila (Saltillo)", country:"MEX", biome:"semi_arid"},
+  {id:"ver", name:"Veracruz", country:"MEX", biome:"tropical"},
+  {id:"mer", name:"Mérida", country:"MEX", biome:"tropical"},
+  {id:"cun", name:"Cancún", country:"MEX", biome:"tropical"}
+];
+
+const EDGES = [
+  ["vic","van"],["van","sea"],["sea","por"],["por","sf"],["sf","la"],["la","sd"],["sd","tij"],["tij","phx"],
+  ["van","calg"],["calg","edm"],["edm","winn"],["winn","minn"],["winn","chi"],["winn","tor"],["tor","ott"],["ott","mont"],["mont","que"],["que","hal"],["hal","stj"],
+  ["phx","slc"],["slc","den"],["den","minn"],["den","dal"],["dal","hou"],["hou","no"],
+  ["minn","chi"],["chi","det"],["det","tor"],["chi","nash"],["nash","atl"],["atl","mia"],["atl","dc"],["dc","nyc"],["nyc","bos"],["phl","nyc"],["clt","atl"],["clt","dc"],
+  ["tij","herm"],["herm","gdl"],["gdl","cdmx"],["cdmx","pue"],["pue","oax"],["cdmx","ver"],["ver","mer"],["mer","cun"],["mty","coa"],["coa","mty"],["mty","dal"],["cdmx","mty"]
+];
+
+/* ======== REFERENCE ======== */
+const REFERENCE = {
+  USA:[
+    {title:"Major Landforms", text:"Rocky Mountains (west), Great Plains (central), Appalachian Mountains (east), Coastal Plains (Atlantic/Gulf)."},
+    {title:"Climate & Biomes", text:"From Arctic Alaska to tropical Florida/Hawai‘i; large temperate forests and prairies in between."},
+    {title:"Human Geography", text:"Pull factors include jobs/wages; urban corridors like BosWash and SoCal; diversified economy and internal migration."}
+  ],
+  CAN:[
+    {title:"Physical Geography", text:"Canadian Shield, Great Lakes–St. Lawrence Lowlands, Western Cordillera."},
+    {title:"Climate & Biomes", text:"Arctic tundra north, vast boreal, temperate rainforest on the Pacific coast."},
+    {title:"Economy", text:"Energy, timber, minerals; strong USMCA trade ties."}
+  ],
+  MEX:[
+    {title:"Land & Water", text:"Mexican Plateau, Yucatán karst/cenotes, Baja peninsula."},
+    {title:"Climate & Biomes", text:"Arid/semi-arid north, temperate highlands, tropical coasts/lowlands."},
+    {title:"Human Geography", text:"Mexico City megacity; maquiladoras; tourism hubs on coasts."}
+  ]
+};
+
+/* ======== QUESTION BANK (full) ======== */
+const QUESTIONS = [
+  /* --- Core set (USA/CAN/MEX/NA) --- */
+  {id:"q1", country:"USA", topic:"physical", dok:2, context:"You’re traveling along the eastern side of the United States. The hills around you are rounded rather than jagged, rivers have carved broad valleys, and many small towns sit in wooded gaps. Park signs mention Blue Ridge and Great Smoky Mountains.", hint:"Which mountain chain is older and more eroded on the Atlantic side of the U.S.?", prompt:"For hundreds of miles, this mountain system forms a long arc from Alabama to New England and shows its age in soft, weathered ridgelines. Streams have cut wide, forested valleys, and many gaps host towns and parkways. Compared with younger western ranges, the peaks here are lower but stretch on and on. Which major mountain system are you traveling through?", choices:["Rocky Mountains","Appalachian Mountains","Sierra Nevada","Cascade Range"], answer:1, why:["The Rockies are younger and taller in the west.","Correct: older, rounded peaks along the East.","Sierra Nevada are in CA/NV.","Cascades are a volcanic chain in the PNW."], explain:"The Appalachians predate the Rockies; weathering has rounded them."},
+  {id:"q2", country:"USA", topic:"biome", dok:2, context:"Crossing the Interior Plains, you see mile after mile of grasses and wheat fields with only windbreak trees and riverside groves. Grain silos dot the horizon and freight trains haul harvests east.", hint:"Which biome’s climate and soils are best for mechanized grain crops and ranching?", prompt:"Vast open landscapes spread out in every direction with soils well suited to cereals. Towns cluster around elevators, and ranch fences run for miles along section roads. Rain falls mostly in spring and early summer, and trees are scarce away from rivers. Which biome drives this region’s agriculture?", choices:["Temperate grassland (prairie)","Mediterranean scrub","Tropical rainforest","Tundra"], answer:0, why:["Correct: prairie soils/climate support grains and cattle.","Mediterranean fits coastal California.","Too wet/hot and not central U.S.","Too cold, short season."], explain:"The Great Plains’ prairies suit mechanized grain farming and ranching."},
+  {id:"q3", country:"USA", topic:"human", dok:2, context:"Your cousin is considering moving from a rural town to Dallas. A new tech apprenticeship promises higher pay, affordable apartments on the edge of the city, and access to transit.", hint:"Is this move motivated by a push factor or a pull factor?", prompt:"People often move because something draws them toward a new place. In this metro, growing industries advertise training programs and steady wages, and neighborhoods offer services like transit and clinics. These advantages make the city appealing compared with smaller towns. Is this an example of a push factor or a pull factor?", choices:["Push: natural disaster","Pull: economic opportunity","Push: persecution","Pull: warmer climate"], answer:1, why:["No hazard mentioned.","Correct: jobs/wages attract.","No evidence given.","Climate not central here."], explain:"Pull factors attract migrants to opportunities."},
+  {id:"q4", country:"USA", topic:"physical", dok:2, context:"Driving east from California’s Sierra Nevada into Nevada, the air turns drier. You pass sun-baked basins, salt flats, and irrigated farms relying on snowmelt.", hint:"What happens on the leeward side of tall mountain ranges?", prompt:"Moist ocean air rises and cools on the windward slopes, dropping rain and snow. After crossing the crest, the air sinks, warms, and dries out as it heads into interior basins. Farmers depend on stored snowmelt and irrigation canals to grow crops. What climate condition describes this drier leeward side?", choices:["Humid tropical","Arid/semi-arid","Subarctic","Marine west coast"], answer:1, why:["Interior west is not tropical.","Correct: descending dry air makes arid basins.","Too cold; not here.","That’s western OR/WA coasts."], explain:"Windward rains; leeward dries, producing deserts/steppe."},
+  {id:"q5", country:"USA", topic:"human", dok:2, context:"Your route passes Boston, New York, Philadelphia, Baltimore, and Washington, DC. Commuter rails connect the cities and suburbs blend together along the corridor.", hint:"A continuous chain of overlapping metropolitan areas has a specific name.", prompt:"From the train window, one metro seems to run into the next with little empty countryside between. Highways, subways, and commuter lines link millions of people in a shared economic region. Airports and ports coordinate freight and travel across the entire corridor. What is the term for this connected chain of large metropolitan areas?", choices:["Exurb","Megapolis (megalopolis)","Hamlet","Agricultural belt"], answer:1, why:["Exurbs are low-density outskirts.","Correct: continuous chain of big metros.","Hamlets are very small.","Not a farming term."], explain:"BosWash is part of a northeastern megalopolis."},
+  {id:"q6", country:"CAN", topic:"human", dok:2, context:"On a winter bus ride through Ontario and Québec, large cities appear close to the U.S. border and along the Great Lakes–St. Lawrence corridor. Ports, rail lines, and highways cluster there.", hint:"Think climate, soils, and trade routes together.", prompt:"The farther north you travel, the colder and less farm-friendly the land becomes, and settlements thin out. Along the southern belt, milder temperatures, better soils, and navigable waterways support dense towns and industry. Cross-border trade connects factories and ports to U.S. markets just hours away. Why do most Canadians live in this southern corridor?", choices:["Best soil in the Shield","Warmer, arable land with major trade routes","Closer to the Arctic","More mountains there"], answer:1, why:["Shield soils are thin/rocky.","Correct: milder climate, better soils, St. Lawrence trade.","Arctic is harsh/sparse.","Mountains hinder settlement."], explain:"Southern Canada has better farming conditions and transport links."},
+  {id:"q7", country:"CAN", topic:"biome", dok:1, context:"As you travel through central Canada, evergreen forests stretch to the horizon. Mills process softwood into lumber and paper products.", hint:"Which biome features conifers like spruce and fir?", prompt:"Long winters and short summers shape a forest of hardy conifers. Spruce, pine, and fir grow densely, supplying timber and pulp for export. Wildlife corridors and replanting rules help manage this vast resource. Which biome is this?", choices:["Temperate grassland","Taiga (boreal forest)","Desert","Tundra"], answer:1, why:["Grasslands lack dense forest.","Correct: boreal softwoods.","Deserts sparse.","Tundra mostly treeless."], explain:"Boreal forests power forestry."},
+  {id:"q8", country:"CAN", topic:"physical", dok:2, context:"Northern Ontario’s landscape is lakes and exposed bedrock. Towns are sparse and soils are thin and acidic over ancient rock.", hint:"Which landform underlies much of central/eastern Canada?", prompt:"Much of the region sits on some of Earth’s oldest exposed rock. Glaciers carved thousands of lakes into the hard surface and scraped away deep soils. Agriculture is limited, but mining and hydropower are important uses of the land. What is this landform called?", choices:["Young volcanic islands","Ancient exposed bedrock with thin soils","Coastal delta plain","High sand desert"], answer:1, why:["Not island arcs.","Correct: Precambrian rock, thin soils, lakes.","Not a river delta.","Not desert."], explain:"A stable craton of very old rock with poor agricultural soils."},
+  {id:"q9", country:"CAN", topic:"biome", dok:1, context:"Near Vancouver, moist ocean air rises up coastal mountains. Evergreen forests drip with moss, ferns, and constant mist.", hint:"What is the cool, wet forest along the Pacific coast called?", prompt:"Standing beneath towering evergreens, you can hear constant drip from fog and rain. Thick layers of moss, nurse logs, and ferns cover the ground, and salmon streams run cold. Orographic lift squeezes moisture from passing air masses all year. Which biome fits this description?", choices:["Temperate rainforest","Savanna","Chaparral","Desert"], answer:0, why:["Correct: cool, wet evergreen forest.","Too dry/warm-season grass.","Mediterranean shrubland fits CA coasts.","Too little rain."], explain:"Orographic rainfall supports huge evergreens."},
+  {id:"q10", country:"MEX", topic:"physical", dok:2, context:"On the Yucatán Peninsula, limestone bedrock dissolves to form caves and deep natural wells of freshwater known as cenotes used by communities and divers.", hint:"Which rock type dissolves to create caverns and sinkholes?", prompt:"Rainwater picks up carbon dioxide from soil and becomes slightly acidic. Over time it seeps into fractures in limestone, widening them into caves and sinkholes. Pools that open to the surface can become important sources of fresh water. What process creates these cenotes?", choices:["Volcanic craters","Glaciers","Karst limestone dissolving","River deltas"], answer:2, why:["Different feature.","Not glacial.","Correct: acidic water dissolves limestone.","Deltas are at river mouths."], explain:"Karst forms caverns and sinkholes where limestone dissolves."},
+  {id:"q11", country:"MEX", topic:"human", dok:2, context:"Factories along the U.S.–Mexico border assemble parts from multiple countries. Highways and railways link to U.S. markets within hours.", hint:"Which location factor lowers transport costs and speeds delivery?", prompt:"Modern manufacturers split production across several sites to save time and money. Border cities allow parts to cross quickly, reducing shipping distances to major U.S. consumers. Truck depots, rail yards, and customs facilities cluster together to speed the flow. What is the main advantage of siting these maquiladoras near the border?", choices:["Avoid hurricanes","Lower transport costs & quick access to U.S. markets","Better farmland","Use more Rio Grande water"], answer:1, why:["Not the driver.","Correct: proximity shortens supply chains.","Not farming.","Water not key here."], explain:"Border locations connect to highways/rail for fast trade."},
+  {id:"q12", country:"MEX", topic:"biome", dok:1, context:"Crossing Sonora and Chihuahua, the landscape is dry with cactus, sparse shrubs, and distant mountain ranges. Rain is infrequent.", hint:"Consider the latitude and rain patterns of northern Mexico.", prompt:"Hot days, cool nights, and long stretches without rain shape plant life that stores water. Saguaro and other cacti stand widely spaced among gravelly soils. Occasional summer storms arrive, but yearly totals stay low. Which climate dominates this region?", choices:["Humid continental","Arid/semi-arid deserts","Equatorial rainforest","Subarctic"], answer:1, why:["Too cold/seasonal.","Correct: Sonoran/Chihuahuan deserts.","Too wet/equatorial.","Too cold/high latitude."], explain:"Northern Mexico includes large desert regions with low rainfall."},
+  {id:"q13", country:"MEX", topic:"human", dok:2, context:"Mexico City lies on a high plateau above 2,000 meters, surrounded by mountains. On calm mornings, a hazy layer can sit over the basin.", hint:"How does elevation and basin topography affect air quality?", prompt:"At higher elevations the air is thinner and can make breathing feel harder for visitors. The surrounding mountains shelter the basin and can trap pollutants when winds are light. During temperature inversions, a lid of warm air above cooler air prevents mixing. Which challenge does this create for residents?", choices:["Extreme hurricanes","Low oxygen and temperature inversions trapping pollution","Permafrost","Monsoon floods only"], answer:1, why:["Hurricanes weaken inland.","Correct: inversions trap smog; air thinner.","Too warm for permafrost.","Rains occur, but elevation/pollution is key."], explain:"Valley topography and elevation contribute to air quality problems."},
+  {id:"q14", country:"NA", topic:"trade", dok:2, context:"A car assembled in Mexico includes engines from the U.S. and electronics from Canada. Border crossings are frequent but standardized.", hint:"Think about modern trade rules among the U.S., Canada, and Mexico.", prompt:"Factories across three countries share parts, labor, and knowledge to build a single product. Clear rules for trucking, customs, and content requirements help those parts move on time. When borders work smoothly, companies can specialize and still meet deadlines. Which outcome of USMCA best supports these integrated supply chains?", choices:["Higher tariffs","More barriers to trucking","Streamlined trade & integrated supply chains","Bans on manufacturing"], answer:2, why:["Tariffs generally kept lower.","Barriers reduced, not raised.","Correct: integrated supply chains.","Manufacturing continues."], explain:"USMCA supports predictable rules for interconnected industries."},
+  {id:"q15", country:"NA", topic:"population", dok:2, context:"Your class compares what draws people to Toronto, Atlanta, and Monterrey. Colleges, hospitals, and headquarters cluster in these metros.", hint:"Which factors attract people to cities rather than push them away?", prompt:"Large cities offer many types of jobs, from healthcare and tech to logistics and media. Universities and training centers help residents gain new skills and credentials. Entertainment, transit, and specialty services add to the appeal of urban life. Which pull factor best explains continued migration to these metros?", choices:["Civil war","Religious persecution","Educational and job opportunities","Dust storms"], answer:2, why:["Push factor.","Push factor.","Correct: colleges and careers attract.","Hazard, not a pull."], explain:"Urban areas host universities, varied industries, services."},
+  {id:"q16", country:"NA", topic:"hazards", dok:1, context:"Late summer along the Atlantic and Gulf coasts brings warm ocean waters, tropical depressions, and emergency advisories.", hint:"Where do warm currents and low latitude combine to fuel hurricanes?", prompt:"Meteorologists track storms that grow over warm seas and curve toward land. Communities prepare for high winds, heavy rain, and storm surge along exposed shorelines. Evacuation routes and shelters are posted well in advance each season. Which coasts face the greatest risk from these landfalling storms?", choices:["Interior Plains","Pacific Northwest","Atlantic & Gulf Coasts","Arctic Archipelago"], answer:2, why:["Far from warm oceans.","Cool Pacific currents limit hurricanes.","Correct: warm Atlantic/Gulf waters fuel storms.","Too cold/icy."], explain:"Tropical cyclones make landfall along Atlantic/Gulf shores."},
+  {id:"q17", country:"NA", topic:"ag", dok:2, context:"Freight trains and barges move grain from the Plains toward ports and feedlots. Grain elevators form a skyline in many towns.", hint:"Which products dominate prairie agriculture?", prompt:"The region’s nickname comes from mile after mile of cereal crops rustling in the wind. Farmers use wide machinery, GPS, and storage silos to handle huge harvests. Rivers and rail lines carry shipments to domestic mills and overseas buyers. Which agricultural output earns this area its reputation?", choices:["Coal mining","Wheat & corn production","Deep-sea fishing","Tourism"], answer:1, why:["Different sector.","Correct: large-scale grain farming.","Not inland.","Not base economy."], explain:"Mechanized farms + fertile soils = grain hub."},
+  {id:"q18", country:"NA", topic:"urban", dok:2, context:"New subdivisions appear farther from city centers. Sidewalks are sparse and most errands require driving.", hint:"What happens to land use and travel when cities spread outward at low density?", prompt:"As cities spread outward, homes and stores sit farther apart and open space gets paved. Wildlife habitats can become chopped into smaller pieces by roads and cul-de-sacs. Commuters often face longer drives to work and school. What is a likely consequence of this kind of growth?", choices:["Higher farmland preservation","Lower car use","Habitat fragmentation & longer commutes","Less land consumption"], answer:2, why:["Sprawl reduces farmland.","Increases car dependency.","Correct: spread fragments habitats.","Uses more land, not less."], explain:"Low-density growth increases driving and consumes open space."},
+  {id:"q19", country:"USA", topic:"rivers", dok:2, context:"Towboats push barges past river towns toward Gulf ports. Tributaries from the Plains and Appalachians join a mighty trunk river.", hint:"Think drainage basins and inland water transportation.", prompt:"A single river system gathers water from a vast central basin and delivers it to the sea. Barges move grain, fuel, and materials efficiently, lowering shipping costs for inland producers. Floodplains along the corridor can be both fertile and hazardous during high water. Why is this river network so significant?", choices:["Has no tributaries","Is a major freight corridor and drains much of central U.S.","Flows west to east only","Is frozen all year"], answer:1, why:["Has many tributaries.","Correct: vital transport/drainage.","Mainly north–south.","Not year-round ice."], explain:"Basin spans Rockies to Appalachians, enabling barge transport."},
+  {id:"q20", country:"USA", topic:"coast", dok:1, context:"Standing on a Miami pier, the air is warm and humid. Signs mention the Gulf Stream and tropical latitude.", hint:"Consider ocean currents and latitude together.", prompt:"Warm ocean currents flow past the peninsula, adding heat and moisture to the air. The low latitude means stronger sunlight and longer warm seasons than in northern states. Sea breezes and afternoon showers are common features of the daily forecast. Which two physical factors best explain this climate?", choices:["High elevation","Proximity to warm ocean currents & low latitude","Permafrost","Rain shadow"], answer:1, why:["Near sea level.","Correct: warm currents + latitude.","Too warm.","Mountains are distant."], explain:"Warm water and sunshine raise temperatures and humidity."},
+  {id:"q21", country:"USA", topic:"apps", dok:1, context:"Traveling through Appalachia, you pass coal tipples, timber trucks, and narrow valleys where mining towns developed along streams.", hint:"Which historic industries shaped this region’s economy and culture?", prompt:"Steep ridges and winding hollows made farming difficult but exposed useful resources. Coal seams and dense forests supported long-standing extractive industries and mill towns. Cultural traditions and music in the region reflect these working landscapes. Which industries historically dominated here?", choices:["Rice paddies","Coal mining & timber","Oil sands","Reindeer herding"], answer:1, why:["Rice in flatter deltas.","Correct: coal & timber central.","Oil sands mainly Alberta.","Not NA industry."], explain:"Energy and wood products drove settlement and work patterns."},
+  {id:"q22", country:"CAN", topic:"settlement", dok:2, context:"Passenger trains connect Toronto, Kingston, Montréal, and Québec City. Ports and canals link inland cities to the Atlantic.", hint:"Which corridor concentrates population and industry?", prompt:"A chain of lakes and a broad river create a natural highway from the interior to the ocean. Cities along this route grew where shipping, rail, and road networks meet. Today, finance, manufacturing, and universities cluster along the same corridor. What is the name of this population belt?", choices:["Churchill–Alert","Great Lakes–St. Lawrence","Yellowknife–Whitehorse","Hudson Bay rim"], answer:1, why:["Arctic outposts.","Correct: cities cluster along lakes & St. Lawrence.","Far north.","Harsh climate, low density."], explain:"Shipping and fertile lowlands focus settlement here."},
+  {id:"q23", country:"CAN", topic:"energy", dok:2, context:"Pipelines, rail, and refineries move petroleum products from Alberta to domestic and export markets. Natural gas fields supply power and industry.", hint:"Which resources are especially abundant in Alberta?", prompt:"In western Canada, thick bitumen deposits and widespread gas fields power a major energy sector. Extraction and upgrading facilities support jobs while raising debates about land use and emissions. Transportation networks carry fuels to provinces and ports thousands of kilometers away. Which resources are most closely linked with Alberta’s economy?", choices:["Oil sands & natural gas","Tidal power only","Geothermal fields","Uranium mining only"], answer:0, why:["Correct: major oil sands & gas.","Not primary.","Limited vs oil/gas.","Uranium exists in Canada, but Alberta is famed for oil/gas."], explain:"Athabasca oil sands and gas play a large role in exports."},
+  {id:"q24", country:"MEX", topic:"tourism", dok:1, context:"Along Quintana Roo’s coast, clear water over coral reefs supports snorkeling and fishing. Resorts advertise year-round warmth.", hint:"What natural features attract visitors to the Caribbean side of Mexico?", prompt:"Tourists come for shallow, clear water that glows bright blue over sandy bottoms. Offshore reefs provide habitat for colorful fish and protect beaches from heavy waves. A tropical climate keeps temperatures warm even in winter travel season. Why does tourism cluster along this part of Mexico’s coast?", choices:["Permafrost beaches","Warm tropical climate & coral reefs","High deserts","Glacial fjords"], answer:1, why:["Wrong climate.","Correct: warm waters and reefs attract.","Deserts inland/north.","Fjords in cold, glaciated coasts."], explain:"Clear water, reefs, and warm climate power coastal tourism."},
+
+  /* --- Unit 1 aligned additions (exhibits, vocab, data) --- */
+  {id:"u1_q_panama_which", country:"NA", topic:"canals", dok:1,
+   exhibit:"The Panama Canal was built to speed travel and shipping between the Atlantic and Pacific Oceans.",
+   prompt:"Which structure was built to accelerate travel between the Atlantic and Pacific Oceans?",
+   choices:["Suez Canal","Panama Canal","London Bridge","Brooklyn Bridge"], answer:1,
+   why:["Links Mediterranean & Red Seas (Egypt).","Correct: connects Atlantic & Pacific across Panama.","Bridge in the UK, not a canal.","Bridge in NYC, not a canal."],
+   explain:"The Panama Canal shortens routes between the Atlantic and Pacific."},
+
+  {id:"u1_q_biome_photo", country:"NA", topic:"biome", dok:2,
+   exhibit:"The scene shows conifer trees with long winters and short summers; logging trucks and pulp mills are common nearby.",
+   prompt:"This North American location is most likely part of which biome?",
+   choices:["Boreal forest","Desert","Grassland","Tropical forest"], answer:0,
+   why:["Correct: conifers, cold winters fit taiga.","Too dry & sparse vegetation.","Mostly grasses, few trees.","Too hot/wet for conifer scene."],
+   explain:"Boreal/taiga regions have conifers and cold seasons."},
+
+  {id:"u1_q_japanese_americans", country:"USA", topic:"culture", dok:2,
+   exhibit:"Facts: first settled in the western U.S.; generations called Issei and Nisei; many were forced into camps during World War II.",
+   prompt:"Which cultural group is described?",
+   choices:["Russian Americans","German Americans","Chinese Americans","Japanese Americans"], answer:3,
+   why:["Not tied to the listed facts.","Not tied to the listed facts.","Chinese faced restrictions, but 'Issei/Nisei' fit Japanese.","Correct: matches Issei/Nisei & WWII incarceration."],
+   explain:"'Issei' (first-generation) and 'Nisei' (second-generation) refer to Japanese immigrants and their children."},
+
+  {id:"u1_q_cities_complete", country:"NA", topic:"human", dok:1,
+   exhibit:"Cities in North America: Los Angeles, New York, Toronto, _______.",
+   prompt:"Which city completes the chart?",
+   choices:["Buenos Aires","London","Mexico City","Tokyo"], answer:2,
+   why:["South America.","Europe.","Correct: Mexico’s capital is in North America.","Asia."],
+   explain:"Mexico City is a major North American city."},
+
+  {id:"u1_q_diffusion_foods", country:"NA", topic:"culture", dok:1,
+   prompt:"Which best describes cultural diffusion?",
+   choices:["Saudi Arabia transports petroleum to Japan.","The UK and Russia join armies.","People in Asia and Africa paint art.","People in North America eat dishes invented in Africa."],
+   answer:3,
+   why:["Trade, not diffusion of culture.","Military alliance, not cultural spread.","Parallel behavior, not clearly 'spread'.","Correct: adoption of foods shows diffusion."],
+   explain:"Diffusion is the spread of culture (foods, ideas, customs) across places."},
+
+  {id:"u1_q_irrigation_policy", country:"USA", topic:"human", dok:2,
+   prompt:"How have limited water resources affected the political development of the Great Plains?",
+   choices:["Reduce wetlands","Restrict rivers to industry","Plan for exporting water","Complete government irrigation projects to support agriculture"],
+   answer:3,
+   why:["Not a central policy outcome.","Not the usual statewide policy.","Unrealistic for Plains states.","Correct: public irrigation supported farming."],
+   explain:"Irrigation projects were used to sustain agriculture where water is scarce."},
+
+  {id:"u1_q_chinese_immigration", country:"USA", topic:"culture", dok:2,
+   exhibit:"Facts: arrived for the California Gold Rush; later worked in farms, factories, construction; faced discrimination and legal limits on immigration.",
+   prompt:"Which cultural group fits these facts?",
+   choices:["Irish Americans","African Americans","Chinese Americans","Norwegian Americans"], answer:2,
+   why:["Many came but facts above are specific to Chinese Americans.","Different historical pathway.","Correct: matches Gold Rush and later labor plus exclusions.","Not tied to those restrictions."],
+   explain:"Chinese immigration surged in the 1800s; later laws restricted entry."},
+
+  {id:"u1_q_catholicism_reason", country:"NA", topic:"culture", dok:1,
+   prompt:"Why is Catholicism the primary religion in most nations in Central America?",
+   choices:["Created by Native nations","Had little contact with Europe","Few resources","Spanish colonialism"],
+   answer:3,
+   why:["Not accurate: colonial era reshaped religion.","There was extensive contact via colonization.","Irrelevant to religion.","Correct: Spain colonized and spread Catholicism."],
+   explain:"Spanish colonialism spread Catholicism across Central America."},
+
+  {id:"u1_q_civics_pluralism", country:"USA", topic:"civics", dok:1,
+   exhibit:"Text: Laws are organized so citizens with different beliefs have the same rights; nobody can be punished for a different opinion.",
+   prompt:"Which value is described?",
+   choices:["Desire for privacy","Pride in independence","Respect for variety in people’s views","Belief in hard work"],
+   answer:2,
+   why:["Not central here.","Important, but not the point of the text.","Correct: pluralism / protected diverse views.","Not what the text states."],
+   explain:"The passage highlights pluralism and protected freedoms."},
+
+  {id:"u1_q_oil_reserves", country:"NA", topic:"energy", dok:1,
+   prompt:"Which nation listed has the largest oil reserves?",
+   choices:["Australia","Canada","Germany","India"], answer:1,
+   why:["Not among top holders.","Correct: Canada’s reserves are very large (oil sands).","Limited reserves.","Limited reserves."],
+   explain:"Canada holds very large reserves, especially in Alberta."},
+
+  {id:"u1_q_climate_crops", country:"NA", topic:"biome", dok:1,
+   prompt:"Why are resources like bananas and sugarcane only in specific areas of North America?",
+   choices:["Different climate zones across the region","Small population","No large cities","Little access to farmland"],
+   answer:0,
+   why:["Correct: tropical/warm climates limit where these crops grow.","Not causal.","Not causal.","Not true."],
+   explain:"Bananas and sugarcane require warm tropical climates."},
+
+  {id:"u1_q_st_patricks", country:"USA", topic:"culture", dok:1,
+   prompt:"The observance of which holiday reflects Irish immigration’s influence on U.S. culture?",
+   choices:["Columbus Day","Presidents’ Day","Saint Patrick’s Day","MLK Day"], answer:2,
+   why:["Italian explorer focus.","U.S. presidents.","Correct: Irish cultural tradition.","Civil rights leader."],
+   explain:"St. Patrick’s Day reflects Irish heritage in the U.S."},
+
+  {id:"u1_q_birthrate_canada", country:"CAN", topic:"data", dok:2,
+   exhibit:"Graph (described): Canada’s 2014 birth rate bar sits near 10 births per 1,000 people (between 8 and 12).",
+   prompt:"Which figure best completes the table for Canada (2014 estimate)?",
+   choices:["5.31","8.89","10.29","12.61"], answer:2,
+   why:["Too low for the bar shown.","Slightly low vs bar ~10.","Correct: ~10/1,000.","A bit high vs the described bar."],
+   explain:"The described bar aligns closest to ~10.3 per 1,000."},
+
+  {id:"u1_q_mex_reform", country:"MEX", topic:"energy", dok:2,
+   exhibit:"Leaders transferred oil and gas exploration rights once owned by the state.",
+   prompt:"Which policy does this describe?",
+   choices:["Require energy conservation","Sell public resources to private businesses","Use public money to buy private firms","Only invest in mapping fuel"],
+   answer:1,
+   why:["Not the policy stated.","Correct: privatization of exploration rights.","Opposite direction.","Too narrow and not the key change."],
+   explain:"Transferring state oil rights to private firms is privatization."},
+
+  {id:"u1_v_accelerated", country:"NA", topic:"vocab", dok:1,
+   exhibit:"Sentence: “The Panama Canal accelerated travel between the Atlantic and Pacific Oceans.”",
+   prompt:"What does accelerated most likely mean?",
+   choices:["delayed","slowed","sped up","prevented"], answer:2,
+   why:["Opposite meaning.","Opposite meaning.","Correct: increased speed.","Opposite meaning."],
+   explain:"Accelerated = sped up."},
+
+  {id:"u1_v_resources", country:"NA", topic:"vocab", dok:1,
+   exhibit:"Phrase: “limited water resources.”",
+   prompt:"What does resources mean in this context?",
+   choices:["natural supplies people use","government rules","tools for farming","large amounts of money"], answer:0,
+   why:["Correct: natural materials/supplies.","Not the meaning here.","Too narrow.","Financial meaning doesn’t fit."],
+   explain:"Resources = useful natural supplies."},
+
+  {id:"u1_v_customs", country:"NA", topic:"vocab", dok:1,
+   exhibit:"Sentence: “Immigrants brought traditions, foods, and customs.”",
+   prompt:"What does customs mean here?",
+   choices:["traditions/practices of a culture","taxes on imported goods","laws passed by government","local businesses"], answer:0,
+   why:["Correct: cultural practices.","Different meaning of the word.","Not here.","Not a definition."],
+   explain:"Context points to cultural practices."},
+
+  {id:"u1_v_primary", country:"NA", topic:"vocab", dok:1,
+   exhibit:"Sentence: “Catholicism became the primary religion in Central America.”",
+   prompt:"What does primary mean?",
+   choices:["secondary","most important/common","least common","optional"], answer:1,
+   why:["Opposite.","Correct: main/most common.","Opposite.","Not about optionality."],
+   explain:"Primary = main/most common."},
+
+  {id:"u1_v_multimeaning", country:"NA", topic:"vocab", dok:1,
+   prompt:"Which word below is a multiple-meaning word?",
+   choices:["canal","camp","forest","oil"], answer:1,
+   why:["Pretty specific meaning.","Correct: can be a place, an activity, or a group.","Specific meaning.","Common but fewer distinct senses here."],
+   explain:"‘Camp’ has several distinct meanings."},
+
+  {id:"u1_v_reference_tool", country:"NA", topic:"vocab", dok:1,
+   exhibit:"Sentence: “Catholicism spread because of Spanish colonialism.”",
+   prompt:"Which reference tool gives the most precise meaning of colonialism?",
+   choices:["dictionary","atlas","thesaurus","map"], answer:0,
+   why:["Correct: best for definitions.","Geography only.","Synonyms, not definitions.","Geography only."],
+   explain:"A dictionary provides precise definitions."},
+
+  {id:"u1_v_morpheme_bio", country:"NA", topic:"vocab", dok:1,
+   prompt:"If a student knows “bio–” means life and sees biome, what strategy are they using?",
+   choices:["context clues","knowledge of word parts","skipping the word","using a map"], answer:1,
+   why:["Possible, but prompt is about parts.","Correct: morphology / word parts.","Not a strategy.","Not a vocab strategy."],
+   explain:"Using Greek/Latin parts helps decode meaning."},
+
+  {id:"u1_v_context_diffusion", country:"NA", topic:"vocab", dok:1,
+   exhibit:"Sentence: “People in North America eat foods invented in Africa.”",
+   prompt:"How can you use this to infer the meaning of diffusion?",
+   choices:["Look it up in a dictionary","Use the sentence to see it means ‘spread’","Skip the word","Ask a friend"],
+   answer:1,
+   why:["Valid, but the question asks about context use.","Correct: context shows ideas/foods spread.","Not effective.","Not independent strategy."],
+   explain:"Context clues point to ‘spread’ of culture."}
+];
+
+/* ======== EVENTS (assessed; XP via quick-check only) ======== */
+const EVENTS = [
+  { id:"e1", title:"Hurricane Watch (Gulf/Atlantic)", icon:"🌀",
+    applies: (city)=> ["hou","no","mia","ver","cun","mer"].includes(city.id),
+    text:"A late-summer storm forms over warm ocean water and strengthens as it moves toward shore. Forecast cones show several possible paths. Families review evacuation maps and secure outdoor items.",
+    choices:[
+      {label:"Delay and review routes", ap:-1, msg:"Preparation slows travel (−1🚶)."},
+      {label:"Press on; time is short", ap:-2, msg:"Heavy rain and detours (−2🚶)."}
+    ],
+    quiz:{
+      prompt:"Why do Atlantic & Gulf coasts face higher hurricane risk?",
+      choices:["Warm ocean waters supply energy","High elevation cools storms","Mountains block moisture","Cold currents fuel storms"],
+      answer:0,
+      explain:"Tropical cyclones draw heat/moisture from warm seas; warm currents near these coasts increase risk."
+    }
+  },
+  { id:"e2", title:"Rain Shadow (Interior West)", icon:"🏜️",
+    applies: (city)=> ["phx","slc","den"].includes(city.id),
+    text:"On the leeward side of tall ranges, sinking air warms and dries the landscape. Irrigation and reservoirs help cities and farms share scarce water.",
+    choices:[
+      {label:"Discuss local watering rules", ap:0, msg:"No travel change."},
+      {label:"Skip the talk and keep moving", ap:-1, msg:"You push ahead (−1🚶)."}
+    ],
+    quiz:{
+      prompt:"What best explains ‘rain shadow’ conditions?",
+      choices:["Sinking, warming air dries the leeward side","Rising air causes more rain on leeward side","Oceans cool the interior more","Cold fronts always bring snow"],
+      answer:0,
+      explain:"Air loses moisture windward; descending leeward air warms and dries, creating arid basins."
+    }
+  },
+  { id:"e3", title:"Border Industry (U.S.–Mexico)", icon:"🚚",
+    applies: (city)=> ["tij","mty","coa","herm","dal","hou"].includes(city.id),
+    text:"Auto parts and electronics may cross the border multiple times before final assembly. Standardized paperwork and nearby highways shorten delivery times.",
+    choices:[
+      {label:"Tour a cross-dock facility", ap:-1, msg:"Time spent touring (−1🚶)."},
+      {label:"Head to the next stop", ap:0, msg:"No travel change."}
+    ],
+    quiz:{
+      prompt:"What is the main advantage of siting factories near the border?",
+      choices:["Avoids hurricanes","Shorter, cheaper access to U.S. markets","Better farmland","More river water for irrigation"],
+      answer:1,
+      explain:"Proximity reduces transport costs and time in integrated supply chains."
+    }
+  },
+  { id:"e4", title:"Taiga Trek (Canada)", icon:"🌲",
+    applies: (city)=> city.country==='CAN' && ["winn","edm","que","stj"].includes(city.id),
+    text:"In the boreal forest, mills process softwood while replanting and wildlife corridors aim to balance jobs and conservation in a cold climate.",
+    choices:[
+      {label:"Meet with forestry planners", ap:-1, msg:"Meeting takes time (−1🚶)."},
+      {label:"Drive on through", ap:0, msg:"No travel change."}
+    ],
+    quiz:{
+      prompt:"Which practice best supports sustainable forestry in the taiga?",
+      choices:["Clear every tree and let nature recover","Replant after harvest & keep habitat corridors","Ban all cutting permanently","Only log in summer to avoid mud"],
+      answer:1,
+      explain:"Replanting and corridor planning sustain resources and wildlife."
+    }
+  }
+];
+
+/* ======== STATE ======== */
+const State = {
+  studentName:"", classPeriod:"",
+  ap: START_AP, xp:0, visits:0, totalVisits:0,
+  current:"chi",
+  visited:new Set(), stamps:[],
+  answered:new Set(), seenEvents:new Set(),
+  seed:(Date.now()&0xffffffff), journal:[],
+  elapsed:0, timerStart:0
+};
+
+/* ======== DOM, ICONS ======== */
+function byId(id){ return document.getElementById(id); }
+const modal = byId('modal'), overlay = byId('overlay'), overlaySheet = byId('overlaySheet');
+const hudName = byId('hudName'), hudClass = byId('hudClass'), hudXP = byId('hudXP'), hudAP = byId('hudAP'), hudV = byId('hudVisits'), hudT = byId('hudTime');
+const logDiv = byId('log'), journey = byId('journey');
+
+const BIOME_ICON = { temperate_rainforest:"🌲", boreal:"🌲", tundra:"❄️", steppe:"🌾", prairie:"🌾", mediterranean:"🌿", semi_arid:"🏜️", desert:"🏜️", alpine:"🏔️", humid_subtropical:"🌦️", tropical:"🌴", tropical_seasonal:"🌴", temperate_forest:"🌳", wetland:"🪵", temperate_highland:"⛰️" };
+const TOPIC_ICON = { physical:"🏔️", biome:"🌳", human:"🏙️", trade:"🚚", population:"🧭", hazards:"🌀", ag:"🌾", urban:"🏙️", rivers:"🌊", coast:"🌊", apps:"⛏️", settlement:"🏘️", energy:"⚡", tourism:"🏖️", vocab:"🔤", data:"📊", civics:"⚖️", culture:"🎎", canals:"🚢" };
+
+/* ======== SPRITES ======== */
+const Sprite = (()=>{
+  const cache = {};
+  const pal = { sky:'#0b1830', ground:'#1e5b2a', dark:'#081425', tree:'#2f8f3d', trunk:'#6d3d1f', snow:'#e6f2ff', sand:'#c7b27b', dune:'#b79a64', rock:'#8ea3b8', water:'#1a5d8f', foam:'#b6e1ff', city:'#96a8ba', window:'#ffd166', palm:'#2fa87f', marsh:'#1e6b58' };
+  function make(key, draw){ if(cache[key]) return cache[key]; const c=document.createElement('canvas'); const S=32; c.width=c.height=S; const g=c.getContext('2d'); g.imageSmoothingEnabled=false; g.fillStyle=pal.dark; g.fillRect(0,0,S,S); draw(g,S); const url=c.toDataURL('image/png'); cache[key]=url; return url; }
+  function mountain(){ return make('mountain',(g,S)=>{ g.fillStyle=pal.sky; g.fillRect(0,0,S,S); g.fillStyle=pal.rock; g.beginPath(); g.moveTo(4,S-4); g.lineTo(16,6); g.lineTo(28,S-4); g.closePath(); g.fill(); g.fillStyle=pal.snow; g.beginPath(); g.moveTo(14,10); g.lineTo(16,6); g.lineTo(18,10); g.closePath(); g.fill(); }); }
+  function forest(){ return make('forest',(g,S)=>{ g.fillStyle=pal.sky; g.fillRect(0,0,S,S); g.fillStyle=pal.ground; g.fillRect(0,S-8,S,8); for(let i=0;i<3;i++){ const x=6+i*8; g.fillStyle=pal.trunk; g.fillRect(x+3,S-12,2,4); g.fillStyle=pal.tree; g.beginPath(); g.moveTo(x,S-12); g.lineTo(x+6,S-22); g.lineTo(x+12,S-12); g.closePath(); g.fill(); } }); }
+  function taiga(){ return make('taiga',(g,S)=>{ g.fillStyle=pal.sky; g.fillRect(0,0,S,S); g.fillStyle=pal.ground; g.fillRect(0,S-8,S,8); for(let i=0;i<2;i++){ const x=5+i*12; g.fillStyle=pal.trunk; g.fillRect(x+4,S-14,2,6); g.fillStyle='#1c6a33'; g.beginPath(); g.moveTo(x,S-14); g.lineTo(x+8,S-26); g.lineTo(x+16,S-14); g.closePath(); g.fill(); } }); }
+  function rainforest(){ return make('rainforest',(g,S)=>{ g.fillStyle='#0b2a3d'; g.fillRect(0,0,S,S); g.fillStyle=pal.ground; g.fillRect(0,S-8,S,8); g.fillStyle='#1f7a55'; g.fillRect(2,S-10,4,6); g.fillStyle='#2aa574'; g.beginPath(); g.arc(4,S-14,6,0,Math.PI*2); g.fill(); }); }
+  function grassland(){ return make('grassland',(g,S)=>{ g.fillStyle=pal.sky; g.fillRect(0,0,S,S); g.fillStyle='#5ea53c'; g.fillRect(0,S-10,S,10); g.fillStyle='#7fc24f'; g.fillRect(0,S-12,S,2); }); }
+  function desert(){ return make('desert',(g,S)=>{ g.fillStyle='#2a1e0d'; g.fillRect(0,0,S,S); g.fillStyle=pal.sand; g.fillRect(0,S-10,S,10); g.fillStyle=pal.dune; g.beginPath(); g.moveTo(0,S-10); g.quadraticCurveTo(S/2,S-18,S,S-10); g.lineTo(S,S); g.lineTo(0,S); g.closePath(); g.fill(); }); }
+  function wetland(){ return make('wetland',(g,S)=>{ g.fillStyle=pal.sky; g.fillRect(0,0,S,S); g.fillStyle=pal.marsh; g.fillRect(0,S-6,S,6); g.fillStyle=pal.water; g.fillRect(0,S-12,S,6); }); }
+  function tropical(){ return make('tropical',(g,S)=>{ g.fillStyle='#10324a'; g.fillRect(0,0,S,S); g.fillStyle=pal.water; g.fillRect(0,S-10,S,10); g.fillStyle=pal.palm; g.fillRect(6,S-16,2,8); g.fillStyle='#39c792'; g.beginPath(); g.moveTo(7,S-16); g.lineTo(2,S-20); g.lineTo(12,S-18); g.closePath(); g.fill(); }); }
+  function city(){ return make('city',(g,S)=>{ g.fillStyle='#0a1a2b'; g.fillRect(0,0,S,S); g.fillStyle=pal.city; g.fillRect(4,S-14,8,14); g.fillRect(14,S-18,6,18); g.fillRect(22,S-10,6,10); g.fillStyle=pal.window; for(let y=S-12;y<S-2;y+=4){ g.fillRect(6,y,2,2); } for(let y=S-16;y<S-2;y+=4){ g.fillRect(16,y,2,2); } }); }
+  function hurricane(){ return make('hurricane',(g,S)=>{ g.fillStyle='#0b1830'; g.fillRect(0,0,S,S); g.strokeStyle=pal.foam; g.lineWidth=2; g.beginPath(); g.arc(S/2,S/2,10,0,Math.PI*2); g.stroke(); g.beginPath(); g.arc(S/2,S/2,6,Math.PI/4,Math.PI*2.25); g.stroke(); g.fillStyle=pal.dark; g.beginPath(); g.arc(S/2,S/2,3,0,Math.PI*2); g.fill(); }); }
+  function factory(){ return make('factory',(g,S)=>{ g.fillStyle='#0a1a2b'; g.fillRect(0,0,S,S); g.fillStyle=pal.city; g.fillRect(4,S-10,24,10); g.fillStyle='#707c8a'; g.fillRect(8,S-18,4,8); g.fillRect(16,S-16,4,6); g.fillStyle=pal.window; g.fillRect(6,S-6,4,2); g.fillRect(12,S-6,4,2); g.fillRect(18,S-6,4,2); }); }
+  return { mountain, forest, taiga, rainforest, grassland, desert, wetland, tropical, city, hurricane, factory };
+})();
+
+function spriteForBiome(b){
+  switch(b){
+    case 'alpine': return Sprite.mountain();
+    case 'temperate_forest': return Sprite.forest();
+    case 'boreal': return Sprite.taiga();
+    case 'temperate_rainforest': return Sprite.rainforest();
+    case 'prairie': case 'steppe': return Sprite.grassland();
+    case 'mediterranean': return Sprite.grassland();
+    case 'semi_arid': case 'desert': return Sprite.desert();
+    case 'humid_subtropical': return Sprite.wetland();
+    case 'tropical': case 'tropical_seasonal': return Sprite.tropical();
+    case 'wetland': return Sprite.wetland();
+    default: return Sprite.city();
+  }
+}
+function spriteForCity(c){ return spriteForBiome(c.biome); }
+function spriteForTopic(q,city){
+  const t=q.topic;
+  if(['physical','biome','rivers','coast'].includes(t)) return spriteForCity(city);
+  if(['ag'].includes(t)) return Sprite.grassland();
+  if(['hazards'].includes(t)) return Sprite.hurricane();
+  if(['trade','energy','canals','data'].includes(t)) return Sprite.factory();
+  if(['tourism','tropical'].includes(t)) return Sprite.tropical();
+  return Sprite.city();
+}
+function spriteForEvent(ev,city){
+  if(ev.id==='e1') return Sprite.hurricane();
+  if(ev.id==='e2') return Sprite.desert();
+  if(ev.id==='e3') return Sprite.factory();
+  if(ev.id==='e4') return Sprite.taiga();
+  return spriteForCity(city);
+}
+
+/* ======== LOGGING & TIMER ======== */
+function logCard(html){ const el=document.createElement('div'); el.className='card'; el.innerHTML=html; logDiv.prepend(el); }
+function toast(msg){ logCard(`<span class="small">${esc(msg)}</span>`); }
+
+let __timer=null;
+function fmtTime(ms){ ms=Math.max(0,Math.floor(ms/1000)); const h=Math.floor(ms/3600), m=Math.floor((ms%3600)/60), s=ms%60; return (h? (h+':'+String(m).padStart(2,'0')) : m)+':'+String(s).padStart(2,'0'); }
+function currentElapsed(){ const base = State.elapsed||0; if(State.timerStart){ return base + (Date.now()-State.timerStart); } return base; }
+function startTimer(){ try{ if(__timer) clearInterval(__timer); if(!State.timerStart) State.timerStart = Date.now(); __timer = setInterval(()=>{ if(hudT) hudT.textContent = fmtTime(currentElapsed()); }, 1000); }catch(_){} }
+function stopTimer(){ try{ if(__timer) clearInterval(__timer); __timer=null; }catch(_){} }
+function commitElapsed(){ if(State.timerStart){ State.elapsed = (State.elapsed||0) + (Date.now()-State.timerStart); State.timerStart = Date.now(); } }
+
+/* ======== STORAGE ======== */
+function safeGet(k){ try{ return localStorage.getItem(k); }catch{ return null; } }
+function safeSet(k,v){ try{ localStorage.setItem(k,v); return true; }catch{ return false; } }
+function safeRemove(k){ try{ localStorage.removeItem(k); }catch{} }
+
+/* ======== MODAL HELPERS ======== */
+function supportsDialog(){ return typeof HTMLDialogElement!=='undefined' && typeof modal?.showModal==='function'; }
+function modalOrOverlay(){ return supportsDialog()? modal : overlaySheet; }
+function openModal(html){
+  if(supportsDialog()){
+    try{ modal.innerHTML=html; modal.showModal(); attachCloseButtons(); return; }
+    catch(e){}
+  }
+  overlaySheet.innerHTML=html; overlay.style.display='flex'; overlay.setAttribute('aria-hidden','false'); attachCloseButtons(true);
+}
+function closeModal(){
+  if(supportsDialog()){
+    try{ modal.close(); return; }catch{}
+  }
+  overlay.style.display='none'; overlay.setAttribute('aria-hidden','true');
+}
+function attachCloseButtons(fallback=false){
+  const root = fallback? overlaySheet : modal;
+  root.querySelectorAll('[data-close]').forEach(b=> b.onclick = closeModal);
+}
+function esc(s){ return String(s).replace(/[&<>\"']/g, c=>({"&":"&amp;","<":"&lt;","&gt;":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
+
+/* ======== HUD & JOURNEY ======== */
+function totalVisitGoal(){ return GOAL_VISITS || 12; }
+function renderHUD(){
+  hudName.textContent = State.studentName || '—';
+  hudClass.textContent = State.classPeriod || '—';
+  hudXP.textContent = State.xp;
+  hudAP.textContent = State.ap;
+  hudV.textContent = `${State.totalVisits}/${totalVisitGoal()}`;
+  if(hudT){ hudT.textContent = fmtTime(currentElapsed()); }
+}
+function renderJourney(){
+  const cur = CITIES.find(c=>c.id===State.current);
+  const neighborIds = EDGES.filter(([a,b])=> a===State.current || b===State.current).map(([a,b])=> a===State.current? b : a);
+  const neighbors = neighborIds.map(id=> CITIES.find(c=>c.id===id));
+  const canTravel = State.ap>0;
+  let html = '';
+  html += `<div class="card"><h3>Current Location</h3><div class="vcard"><img class="pimg" src="${spriteForCity(cur)}" alt="Biome art"><div><b>${cur.name}</b> — ${cur.country}<div class="small">Biome: ${cur.biome.replace(/_/g,' ')}</div></div></div><div class="small">Travel points left: <b>${State.ap}</b>. Choose a connected destination.</div></div>`;
+  html += `<div class="card"><h3>Destinations</h3><div class="destGrid">` + neighbors.map(n=>`<button class="chip" ${canTravel?'':'disabled'} data-goto="${n.id}"><img class="pimg" alt="" src="${spriteForCity(n)}"><span>${n.name}</span></button>`).join('') + `</div></div>`;
+  const recent = State.stamps.slice(-8);
+  html += `<div class="card"><h3>Passport (recent)</h3><div class="list">${recent.length? recent.map(s=>`<span class="stamp">${s}</span>`).join('') : '<span class="small">No stamps yet.</span>'}</div></div>`;
+  journey.innerHTML = html;
+  journey.querySelectorAll('[data-goto]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const id = btn.getAttribute('data-goto'); const dest=CITIES.find(c=>c.id===id); onCityClick(dest);
+  }));
+}
+function renderAll(){ renderHUD(); renderJourney(); }
+
+/* ======== GAMEPLAY ======== */
+function openStartMenu(){
+  const raw = safeGet('geoquest-save'); const has = !!raw;
+  let savedName = '—';
+  if(has){ try{ const d=JSON.parse(raw); savedName = d?.studentName||'Student'; }catch{} }
+  openModal(`<div class="modal"><header><h3>Start / Continue</h3></header><div class="card small">${has? `Found a previous save for <b>${esc(savedName)}</b>.` : 'No save found yet.'}</div><div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">${has? '<button class="btn" id="btnCont" type="button">Continue</button>' : ''}<button class="btn primary" id="btnNew" type="button">Start New Trek</button><button class="btn" data-close type="button">Cancel</button></div></div>`);
+  const c = byId('btnCont');
+  if(c) c.onclick = ()=>{ if(load()){ closeModal(); renderAll(); toast('Save loaded.'); } else { toast('Could not load save. Starting new.'); closeModal(); intro(); } };
+  byId('btnNew').onclick = ()=>{ closeModal(); intro(); };
+}
+
+function intro(){
+  openModal(`<div class="modal"><header><h2>Welcome to GeoQuest: North America Trek</h2></header><div class="small">Travel across <b>the United States</b>, <b>Canada</b>, and <b>Mexico</b>. Choose connected destinations, then answer a challenge or face an event. Earn <b>${GOAL_XP} ⭐</b> and visit <b>${GOAL_VISITS}</b> locations to finish. XP comes only from <b>correct answers</b> on challenges or event quick checks.</div><div class="row" style="margin-top:10px"><div class="col"><label>Student name<br><input id="inName" class="mono" style="width:100%" placeholder="First Last"></label></div><div class="col"><label>Class / Period<br><input id="inClass" class="mono" style="width:100%" placeholder="e.g., 1st, 2nd"></label></div></div><div class="small" style="margin-top:10px">Starting city: <b>Chicago</b>. You have <b>${START_AP}</b> travel points.</div><div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px"><button class="btn" data-close type="button">Cancel</button><button class="btn primary" id="goStart" type="button">Start Trek</button></div></div>`);
+  byId('goStart').onclick = ()=>{
+    State.studentName = byId('inName').value.trim()||'Student';
+    State.classPeriod = byId('inClass').value.trim()||'—';
+    Object.assign(State, {ap:START_AP,xp:0,visits:0,totalVisits:0,current:'chi',visited:new Set(),answered:new Set(),stamps:[],seenEvents:new Set(),journal:[],elapsed:0,timerStart:Date.now()});
+    srand(State.seed); closeModal(); startTimer(); renderAll();
+    logCard(`<b>Hi, ${esc(State.studentName)}!</b> You are starting in Chicago. Pick a connected destination to begin.`);
+  };
+}
+
+function onCityClick(city){
+  if(city.id===State.current){ toast("You are already here."); return; }
+  if(State.ap<=0){ toast("No travel points left. Try finishing or reload from a save."); return; }
+  const neighbors = EDGES.filter(([a,b])=> a===State.current||b===State.current).map(([a,b])=> a===State.current?b:a);
+  if(!neighbors.includes(city.id)){ toast("You can only travel along connected routes."); return; }
+  State.ap--; State.current = city.id; renderHUD(); renderJourney();
+  const stamp = `${city.name} (${city.country})`;
+  if(!State.visited.has(city.id)){
+    State.visited.add(city.id); State.visits++; State.totalVisits++; renderHUD();
+    State.stamps.push(stamp); logCard(`<div><span class="stamp">📍 Passport stamp: ${esc(stamp)}</span></div>`);
+  }
+  if(rand()<0.6){ presentChallenge(city); } else { presentEvent(city); }
+}
+
+function presentChallenge(city){
+  srand(State.seed ^ (State.visits<<4));
+  const bank = QUESTIONS.filter(q=> (q.country===city.country || q.country==='NA') && !State.answered.has(q.id));
+  const q = bank.length? randPick(bank) : randPick(QUESTIONS.filter(q=>q.country===city.country || q.country==='NA'));
+  if(!q){ toast("No questions available."); return; }
+  const art = spriteForTopic(q,city);
+  const biomeIcon = BIOME_ICON[city.biome] || '📍';
+  const ctx = buildContext(q, city);
+  const exhibit = q.exhibit ? `<div class="card small"><b>Exhibit</b><div>${esc(q.exhibit)}</div></div>` : '';
+  const opts = q.choices.map((c,i)=>`<div class="choice" data-idx="${i}">${esc(c)}</div>`).join('');
+  openModal(
+    `<div class="modal">
+       <header><h3>${city.name}: Challenge</h3>
+         <div class="small">Topic: <b>${q.topic}</b> • DOK: <b>${q.dok||1}</b></div>
+       </header>
+       <div class="vcard"><img class="pimg" src="${art}" alt="illustration"><div><b>Context:</b> ${esc(ctx)}</div></div>
+       ${exhibit}
+       <div class="vcard"><div class="emoji">${biomeIcon}</div><div><b>Place token:</b> ${esc(city.biome.replace(/_/g,' '))}</div></div>
+       <div>${esc(q.prompt)}</div>
+       <div class="choices" id="choices">${opts}</div>
+       <div id="feedback" class="small" style="margin-top:8px; min-height:22px"></div>
+       <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">
+         <button class="btn" data-close type="button">Close</button>
+       </div>
+     </div>`
+  );
+  modalOrOverlay().querySelectorAll('.choice').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const idx = +el.getAttribute('data-idx');
+      const selected = q.choices[idx];
+      const correct = (idx===q.answer);
+      if(correct){ el.classList.add('correct'); State.xp += 2; State.answered.add(q.id); }
+      else { el.classList.add('wrong'); State.xp = Math.max(0, State.xp-1); }
+      renderHUD();
+      byId('feedback').innerHTML = `${correct? '✅ Correct! +2 ⭐' : '❌ Not quite. −1 ⭐'}<br><span class="small">${esc(q.explain||'')}</span>${renderWhy(q)}`;
+      State.journal.push({ts:Date.now(), city:city.id, q:q.id, correct, selected});
+    });
+    el.setAttribute('tabindex','0');
+    el.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
+  });
+}
+
+function presentEvent(city){
+  const avail = EVENTS.filter(e=> e.applies(city) && !State.seenEvents.has(e.id));
+  const ev = avail.length? randPick(avail) : randPick(EVENTS);
+  const art = spriteForEvent(ev,city);
+
+  const choiceHTML = ev.choices.map((c,i)=>`<div class="choice" data-ix="${i}">${esc(c.label)}</div>`).join('');
+
+  openModal(`
+  <div class="modal">
+    <header><h3>${esc(ev.title)}</h3><div class="small">Location: <b>${city.name}</b></div></header>
+    <div class="vcard"><img class="pimg" src="${art}" alt="event art"><div>${esc(ev.text)}</div></div>
+    <div class="choices" id="evChoices">${choiceHTML}</div>
+    <div id="eventfb" class="small" style="margin-top:8px; min-height:22px"></div>
+
+    <div id="qcBlock" style="display:none; margin-top:12px">
+      <div class="card">
+        <h3>Quick Check</h3>
+        <div id="qcPrompt" class="small" style="margin-bottom:6px"></div>
+        <div id="qcChoices" class="choices"></div>
+        <div id="qcFeedback" class="small" style="margin-top:6px; min-height:22px"></div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">
+      <button class="btn" data-close type="button">Close</button>
+    </div>
+  </div>`);
+
+  // Handle event action choices (AP effects only)
+  modalOrOverlay().querySelectorAll('#evChoices .choice').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const i = +el.getAttribute('data-ix');
+      const c = ev.choices[i];
+      State.ap = Math.max(0, State.ap + (c.ap||0));
+      renderHUD();
+      byId('eventfb').textContent = c.msg;
+      State.seenEvents.add(ev.id);
+      State.journal.push({ts:Date.now(), city:city.id, event:ev.id, choice:i});
+      // Reveal Quick Check (no ⭐ until answered correctly)
+      launchQuickCheck(ev);
+      // disable further event choice clicks
+      modalOrOverlay().querySelectorAll('#evChoices .choice').forEach(ch=> ch.setAttribute('disabled','true'));
+    });
+    el.setAttribute('tabindex','0');
+    el.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
+  });
+}
+
+function launchQuickCheck(ev){
+  const block = byId('qcBlock'); if(!ev.quiz){ block.style.display='none'; return; }
+  block.style.display='block';
+  byId('qcPrompt').textContent = ev.quiz.prompt;
+  const opts = ev.quiz.choices.map((c,i)=>`<div class="choice" data-q="${i}">${esc(c)}</div>`).join('');
+  byId('qcChoices').innerHTML = opts;
+
+  let done = false;
+  byId('qcChoices').querySelectorAll('.choice').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if(done) return;
+      const idx = +el.getAttribute('data-q');
+      const correct = (idx===ev.quiz.answer);
+      if(correct){ el.classList.add('correct'); State.xp += 2; byId('qcFeedback').innerHTML = `✅ Correct! +2 ⭐<br><span class="small">${esc(ev.quiz.explain||'')}</span>`; }
+      else { el.classList.add('wrong'); byId('qcFeedback').innerHTML = `❌ Not quite.<br><span class="small">${esc(ev.quiz.explain||'')}</span>`; }
+      renderHUD();
+      done = true;
+      byId('qcChoices').querySelectorAll('.choice').forEach(ch=> ch.setAttribute('disabled','true'));
+      State.journal.push({ts:Date.now(), event_quiz:ev.id, correct});
+    });
+    el.setAttribute('tabindex','0');
+    el.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
+  });
+}
+
+function practiceQuiz(){
+  const q = randPick(QUESTIONS);
+  const opts = q.choices.map((c,i)=>`<div class="choice" data-idx="${i}">${esc(c)}</div>`).join('');
+  openModal(`<div class="modal"><header><h3>Practice Question</h3><div class="small">Topic: <b>${q.country}</b> / <b>${q.topic}</b> • DOK: <b>${q.dok||1}</b></div></header><div class="vcard"><div class="emoji">${TOPIC_ICON[q.topic]||'❓'}</div><div><b>Read carefully:</b> the prompt includes multiple clues about place or process.</div></div><div>${esc(q.prompt)}</div><div class="choices">${opts}</div><div id="feedback" class="small" style="margin-top:8px; min-height:22px"></div><div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px"><button class="btn" data-close type="button">Close</button></div></div>`);
+  modalOrOverlay().querySelectorAll('.choice').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const idx = +el.getAttribute('data-idx'); const correct = (idx===q.answer);
+      el.classList.add(correct? 'correct':'wrong');
+      byId('feedback').innerHTML = `${correct? '✅ Correct!' : '❌ Not quite.'}<br><span class="small">${esc(q.explain||'')}</span>${renderWhy(q)}`;
+    });
+    el.setAttribute('tabindex','0');
+    el.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
+  });
+}
+
+/* ======== CONTEXT HELPERS ======== */
+function buildContext(q, city){
+  if(q.context) return q.context;
+  const country = q.country==='NA' ? city.country : q.country;
+  const title = pickRefTitle(q.topic);
+  const pool = REFERENCE[country]||[];
+  const block = pool.find(x=> title.some(t => x.title.toLowerCase().includes(t)) ) || pool[0];
+  const part = block? `${block.title}: ${block.text}` : '';
+  return `You are in ${city.name}. Consider the local environment and this clue — ${part}`;
+}
+function pickRefTitle(topic){
+  const map = {
+    physical:['physical','landform'],
+    biome:['climate','biome'],
+    human:['human','economy'],
+    trade:['economy','trade'],
+    population:['human','population'],
+    hazards:['climate','hazard'],
+    ag:['ag','land'],
+    urban:['human','urban'],
+    rivers:['land','water'],
+    coast:['coast','land'],
+    apps:['human','economy'],
+    settlement:['population','human'],
+    energy:['energy','economy'],
+    tourism:['economy','human'],
+    civics:['human'],
+    culture:['human','culture'],
+    canals:['water','trade'],
+    data:['human'],
+    vocab:['human']
+  };
+  return map[topic] || ['human'];
+}
+function renderWhy(q){
+  if(!q.why || !q.why.length) return '';
+  const rows = q.choices.map((c,i)=>`<div class="small">• ${esc(c)} — ${esc(q.why[i]||'')}</div>`).join('');
+  return `<div class="card small" style="margin-top:8px"><b>Answer breakdown</b>${rows}</div>`;
+}
+
+/* ======== FINISH & CODE ======== */
+function b36(n, pad=0){ const s = Math.max(0, Number(n||0)).toString(36).toUpperCase(); return pad? s.padStart(pad,'0'):s; }
+function hashFNV1a(str){
+  let h=0x811c9dc5;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = (h + ((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0; }
+  return ('00000000'+h.toString(16)).slice(-8);
+}
+function makeCode(name, cls, xp, visits){
+  const payload = `${name}|${cls}|${xp}|${visits}|${VERSION}`;
+  const sig = hashFNV1a(SECRET_KEY + '|' + payload).slice(0,6).toUpperCase();
+  return `NA-${b36(xp,2)}${b36(visits,2)}-${sig}`;
+}
+function doFinish(){
+  const ok = (State.xp>=GOAL_XP) && (State.totalVisits>=GOAL_VISITS);
+  const mins = Math.round(currentElapsed()/60000);
+  const code = ok ? makeCode(State.studentName, State.classPeriod, State.xp, State.totalVisits) : null;
+  openModal(`<div class="modal">
+    <header><h3>Finish & Get Code</h3></header>
+    <div class="kv small">
+      <div>Student</div><div><b>${esc(State.studentName||'—')}</b></div>
+      <div>Class</div><div>${esc(State.classPeriod||'—')}</div>
+      <div>Knowledge ⭐</div><div>${State.xp} / ${GOAL_XP}</div>
+      <div>Visits 📍</div><div>${State.totalVisits} / ${GOAL_VISITS}</div>
+      <div>Time ⏱️</div><div>${mins} min</div>
+      <div>Version</div><div>${VERSION}</div>
+    </div>
+    ${ ok ? `
+      <div class="card"><div><b>Your completion code</b> (show your teacher):</div>
+      <div class="mono" id="codeBox" style="font-size:1.05rem; padding:8px; background:#0a1730; border:1px solid #2b3e66; border-radius:8px; word-break:break-all;">${code}</div>
+      <div class="small">Code is tied to your <b>name, class, ⭐, and visits</b>. Changing any of these will change the code.</div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn" id="btnCopyCode" type="button">Copy Code</button>
+        <button class="btn" id="btnPrintProof" type="button">Print Proof</button>
+      </div></div>
+    ` : `
+      <div class="card small"><b>Not finished yet.</b> Keep going!</div>
+      <div class="row">
+        <div class="col card small"><b>Need ⭐?</b><br>Answer challenges and event quick checks.</div>
+        <div class="col card small"><b>Need visits?</b><br>Travel to connected cities to collect passport stamps.</div>
+      </div>
+    `}
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">
+      <button class="btn" data-close type="button">Close</button>
+    </div>
+  </div>`);
+  const copyBtn = byId('btnCopyCode');
+  if(copyBtn){
+    copyBtn.onclick = async ()=>{
+      try{
+        const t = byId('codeBox').innerText;
+        await navigator.clipboard.writeText(t);
+        toast('Code copied to clipboard.');
+      }catch{ toast('Select and copy the code manually.'); }
+    };
+  }
+  const printBtn = byId('btnPrintProof');
+  if(printBtn){
+    printBtn.onclick = ()=>{
+      const win = window.open('', '_blank');
+      const when = new Date().toLocaleString();
+      win.document.write(`<pre style="font:14px/1.4 monospace">${esc(`
+GeoQuest: North America Trek — Proof of Completion
+Student: ${State.studentName}
+Class:   ${State.classPeriod}
+XP:      ${State.xp} / ${GOAL_XP}
+Visits:  ${State.totalVisits} / ${GOAL_VISITS}
+Time:    ${Math.round(currentElapsed()/60000)} min
+Version: ${VERSION}
+Code:    ${code}
+When:    ${when}
+`)}</pre>`);
+      win.document.close();
+      win.focus();
+      win.print();
+    };
+  }
+}
+function doVerify(){
+  openModal(`<div class="modal">
+    <header><h3>Verify Code (Teacher)</h3></header>
+    <div class="row">
+      <div class="col"><label>Student name<br><input id="vfName" class="mono" style="width:100%"></label></div>
+      <div class="col"><label>Class / Period<br><input id="vfClass" class="mono" style="width:100%"></label></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div class="col"><label>Knowledge ⭐<br><input id="vfXP" type="number" min="0" class="mono" style="width:100%"></label></div>
+      <div class="col"><label>Visits 📍<br><input id="vfVisits" type="number" min="0" class="mono" style="width:100%"></label></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div class="col"><label>Code<br><input id="vfCode" class="mono" style="width:100%" placeholder="NA-.."></label></div>
+    </div>
+    <div id="vfResult" class="card small" style="display:none; margin-top:10px"></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">
+      <button class="btn" id="btnRunVerify" type="button">Verify</button>
+      <button class="btn" data-close type="button">Close</button>
+    </div>
+  </div>`);
+  byId('btnRunVerify').onclick = ()=>{
+    const nm = byId('vfName').value.trim();
+    const cl = byId('vfClass').value.trim();
+    const xp = Math.max(0, parseInt(byId('vfXP').value||'0',10));
+    const vs = Math.max(0, parseInt(byId('vfVisits').value||'0',10));
+    const code = byId('vfCode').value.trim().toUpperCase();
+    const expected = makeCode(nm, cl, xp, vs);
+    const ok = (code === expected);
+    const res = byId('vfResult');
+    res.style.display='block';
+    res.innerHTML = ok
+      ? `<b>✅ Valid.</b> Code matches the student, class, ⭐, and visits for this build (${VERSION}).<div class="small mono">Expected: ${expected}</div>`
+      : `<b>❌ Invalid.</b> The code does not match the provided details.<div class="small mono">Expected: ${expected}<br>Check name/casing, class, ⭐, and visits.</div>`;
+  };
+}
+function openReference(){
+  openModal(`<div class="modal">
+    <header><h3>Quick Reference</h3></header>
+    <div class="row">
+      ${['USA','CAN','MEX'].map(cc=>`
+        <div class="col card">
+          <h3>${cc}</h3>
+          <div class="small">${REFERENCE[cc].map(x=>`<div>• <b>${esc(x.title)}:</b> ${esc(x.text)}</div>`).join('')}</div>
+        </div>`).join('')}
+    </div>
+    <div class="card small"><b>Tips</b><div>Use clues in each prompt: landforms, climate, industries, and transport corridors often point to the answer.</div></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">
+      <button class="btn" data-close type="button">Close</button>
+    </div>
+  </div>`);
+}
+function serializableState(){return {...State,visited:[...State.visited],answered:[...State.answered],seenEvents:[...State.seenEvents],stamps:[...State.stamps],timerStart:State.timerStart?Date.now()-(Date.now()-State.timerStart):0};}
+function save(){const ok=safeSet('geoquest-save',JSON.stringify(serializableState())); toast(ok?'Game saved.':'Could not save (storage blocked).'); return ok;}
+function load(){const raw=safeGet('geoquest-save'); if(!raw) return false; try{const d=JSON.parse(raw); Object.assign(State,d); State.visited=new Set(d.visited||[]); State.answered=new Set(d.answered||[]); State.seenEvents=new Set(d.seenEvents||[]); if(State.timerStart){startTimer();} else {State.timerStart=0;} return true;}catch{ return false; }}
+function resetAll(){ if(!confirm('Reset progress and clear the local save?')) return; stopTimer(); safeRemove('geoquest-save'); Object.assign(State,{studentName:'',classPeriod:'',ap:START_AP,xp:0,visits:0,totalVisits:0,current:'chi',visited:new Set(),stamps:[],answered:new Set(),seenEvents:new Set(),journal:[],elapsed:0,timerStart:0}); renderAll(); toast('Progress cleared.'); }
+function exportSave(){ const data=JSON.stringify(serializableState(),null,2); const a=document.createElement('a'); a.href='data:application/json;charset=utf-8,'+encodeURIComponent(data); a.download=`geoquest-save-${Date.now()}.json`; document.body.appendChild(a); a.click(); a.remove(); toast('Save exported as a file.'); }
+function importSave(){ openModal(`<div class="modal"><header><h3>Import Save</h3></header><input id="fileIn" type="file" accept=".json,application/json"><div class="small" style="margin-top:8px">Choose a previously exported GeoQuest save file.</div><div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px"><button class="btn" data-close type="button">Cancel</button></div></div>`); const fi=byId('fileIn'); fi.addEventListener('change',()=>{const f=fi.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{try{const d=JSON.parse(r.result); safeSet('geoquest-save',JSON.stringify(d)); load(); renderAll(); toast('Save imported.'); closeModal();}catch{toast('Invalid save file.');}}; r.readAsText(f);}); }
+
+function bindUI(){
+  byId('btnStart').onclick=openStartMenu;
+  byId('btnQuiz').onclick=practiceQuiz;
+  byId('btnEvent').onclick=()=>presentEvent(CITIES.find(c=>c.id===State.current));
+  byId('btnFinish').onclick=doFinish;
+  byId('btnVerify').onclick=doVerify;
+  byId('btnSave').onclick=save;
+  byId('btnReset').onclick=resetAll;
+  byId('btnExport').onclick=exportSave;
+  byId('btnImport').onclick=importSave;
+  byId('btnLearn').onclick=openReference;
+}
+
+function init(){
+  if(load()){ startTimer(); toast('Save loaded.'); } else { toast('Click “Start / Continue” to begin.'); }
+  renderAll(); bindUI();
+}
+if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', init, {once:true}); } else { init(); }
+</script>
+</body>
+</html>
