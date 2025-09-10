@@ -343,3 +343,22 @@ dialog::backdrop {
     grid-auto-rows: auto auto;
   }
 }
+/* === Map styles (pixel vibe) === */
+.mapWrap canvas{
+  display:block;
+  width:100%;
+  height:auto;
+  image-rendering:pixelated;
+  border-radius:12px;
+  border:1px solid #21365d;
+  background:linear-gradient(180deg,#071a2e,#0b2140);
+}
+.mapLegend{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  color:var(--muted, #93a3b8);
+  font-size:.9rem;
+  margin-top:6px;
+}
+.dot{ width:10px; height:10px; border-radius:50% }
