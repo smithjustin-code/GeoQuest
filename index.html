@@ -4,67 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>GeoQuest: North America Trek — v2.3.4 (Assessed Events)</title>
-<style>
-  :root{ --bg:#0e1726;--panel:#121d31;--accent:#4cc9f0;--accent2:#f72585;--good:#2dd36f;--warn:#ffd166;--bad:#ef476f;--ink:#e6edf7;--muted:#93a3b8;--card:#0f223a; }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;background:radial-gradient(1200px 800px at 10% 10%, #17263f, var(--bg));color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;display:grid;grid-template-columns:1.2fr 1fr;gap:14px;padding:14px}
-  #journeyPane,#uiPane{background:var(--panel);border:1px solid #1f2e4a;border-radius:16px;overflow:hidden;position:relative}
-  header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg, rgba(15,34,58,.95), rgba(15,34,58,.7));padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #203250}
-  .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#0b1d33;border:1px solid #203250;color:var(--muted);font-weight:600}
-  .badge b{color:var(--ink)}
-  .pill{border:1px solid #2b3e66;background:#0f1d33;color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer}
-  .pill[disabled]{opacity:.5;cursor:not-allowed}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid #2b3e66;background:#0f223a;color:#fff;cursor:pointer;font-weight:600}
-  .btn:hover{border-color:#3e5d95}
-  .btn.primary{background:linear-gradient(180deg, #1b345a, #122747);border-color:#35558d}
-  .btn.good{background:#0e2b20;border-color:#1d5e45}
-  .btn.warn{background:#2e2811;border-color:#6f5a1d}
-  .section{padding:14px}
-  #uiPane{display:flex;flex-direction:column}
-  #log{flex:1;overflow:auto;padding:10px 14px}
-  #controls{padding:12px 14px;border-top:1px solid #203250;display:flex;flex-wrap:wrap;gap:8px}
-  .card{background:var(--card);border:1px solid #21365d;border-radius:14px;padding:12px;margin:10px 0}
-  .card h3{margin:0 0 6px 0}
-  .row{display:flex;gap:10px;flex-wrap:wrap}
-  .row .col{flex:1 1 220px}
-  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 10px}
-  .kv div:nth-child(odd){color:var(--muted)}
-  .small{font-size:.95rem;color:var(--muted)}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
-
-  /* Journey UI */
-  #journeyWrap{height:100%;display:flex;flex-direction:column}
-  #journey{flex:1;overflow:auto;padding:12px 14px}
-  .destGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-  .chip{display:flex;align-items:center;gap:8px;border:1px solid #2b3e66;background:#0f1d33;color:var(--ink);padding:10px;border-radius:12px;cursor:pointer}
-  .chip[disabled]{opacity:.55;cursor:not-allowed}
-  .list{display:flex;flex-wrap:wrap;gap:8px}
-  .stamp{display:inline-flex;align-items:center;gap:6px;background:rgba(76,201,240,.12);color:#bfe9fb;border:1px dashed #4cc9f0;padding:4px 8px;border-radius:999px;font-weight:700}
-  .vcard{display:flex;gap:10px;align-items:center;background:#0f223a;border:1px solid #21365d;border-radius:10px;padding:8px;margin:8px 0}
-  .vcard .emoji{font-size:1.4rem}
-
-  /* Pixel art images */
-  .pimg{width:64px;height:64px;image-rendering:pixelated;border-radius:8px;border:1px solid #21365d;background:#071325;display:block}
-  .chip .pimg{width:40px;height:40px;border-radius:6px}
-
-  /* Modal */
-  dialog{border:none;border-radius:16px;padding:0;color:var(--ink);background:#0e1b30;max-width:min(820px,92vw)}
-  dialog::backdrop{background:rgba(0,10,20,.66)}
-  .modal{padding:16px}
-  .modal header{position:static;background:transparent;border:0;padding:0 0 10px 0}
-  .choices{display:grid;gap:8px;margin-top:10px}
-  .choice{padding:10px 12px;border:1px solid #2b3e66;border-radius:12px;background:#0a1730;cursor:pointer}
-  .choice:hover{border-color:#4c6fb1}
-  .choice.correct{border-color:#1f7a55;background:#0e2b20}
-  .choice.wrong{border-color:#7a1f37;background:#3a0f1a}
-
-  /* Fallback modal */
-  .overlay{position:fixed;inset:0;background:rgba(0,10,20,.66);display:none;align-items:center;justify-content:center;z-index:9999}
-  .overlay .sheet{background:#0e1b30;border-radius:16px;max-width:min(820px,92vw);padding:16px;border:1px solid #21365d}
-
-  @media (max-width: 1100px){ body{grid-template-columns:1fr;grid-auto-rows:auto auto} }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
   <section id="journeyPane" aria-label="Journey">
