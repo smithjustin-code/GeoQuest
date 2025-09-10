@@ -59,6 +59,47 @@
   .choice.correct{border-color:#1f7a55;background:#0e2b20}
   .choice.wrong{border-color:#7a1f37;background:#3a0f1a}
 
+  .newspaper-clipping {
+  background: #f4f1ea;
+  color: #222;
+  border: 1.5px solid #d4cfc0;
+  border-radius: 7px 21px 13px 17px/23px 11px 17px 15px;
+  box-shadow: 0 2px 12px rgba(60, 60, 0, 0.08), 0 1px 0 #ded8c8;
+  font-family: 'Georgia', serif;
+  padding: 18px 22px;
+  margin: 12px 0;
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.8s;
+}
+.newspaper-clipping:before {
+  content: '';
+  position: absolute;
+  left: -14px; top: 10px; width: 20px; height: 70%;
+  background: repeating-linear-gradient(
+      -45deg,
+      #d4cfc0,
+      #d4cfc0 2px,
+      transparent 2px,
+      transparent 6px
+    );
+  opacity: 0.22;
+  pointer-events: none;
+}
+.newspaper-headline {
+  font-family: 'Impact', 'Arial Black', serif;
+  font-size: 1.4em;
+  margin-bottom: 0.4em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.newspaper-date {
+  font-size: 0.95em;
+  color: #7d7971;
+  margin-bottom: 0.7em;
+}
+@keyframes fadeIn { from { opacity:0; transform: translateY(25px);} to { opacity:1; transform: none; } }
+  
   /* Fallback modal */
   .overlay{position:fixed;inset:0;background:rgba(0,10,20,.66);display:none;align-items:center;justify-content:center;z-index:9999}
   .overlay .sheet{background:#0e1b30;border-radius:16px;max-width:min(820px,92vw);padding:16px;border:1px solid #21365d}
@@ -622,6 +663,43 @@ function presentChallenge(city){
   const bank = QUESTIONS.filter(q=> (q.country===city.country || q.country==='NA') && !State.answered.has(q.id));
   const q = bank.length? randPick(bank) : randPick(QUESTIONS.filter(q=>q.country===city.country || q.country==='NA'));
   if(!q){ toast("No questions available."); return; }
+
+  // Example logic: show a clipping 30% of the time for research/debate topics
+  if (Math.random() < 0.3 && ['human','trade','energy','civics','culture'].includes(q.topic)) {
+    showNewspaperClipping({
+      headline: "Debate in the News!",
+      date: new Date().toLocaleDateString(),
+      story: "A hot topic is sparking conversation in the region: " + (q.context || q.prompt),
+      after: () => presentChallengeModal(q, city)
+    });
+  } else {
+    presentChallengeModal(q, city);
+  }
+}
+
+function presentChallengeModal(q, city) {
+  const art = spriteForTopic(q,city);
+  const biomeIcon = BIOME_ICON[city.biome] || '📍';
+  const ctx = buildContext(q, city);
+  const exhibit = q.exhibit ? `<div class="card small"><b>Exhibit</b><div>${esc(q.exhibit)}</div></div>` : '';
+  const opts = q.choices.map((c,i)=>`<div class="choice" data-idx="${i}">${esc(c)}</div>`).join('');
+  openModal(
+    `<div class="modal">
+       <header><h3>${city.name}: Challenge</h3>
+         <div class="small">Topic: <b>${q.topic}</b> • DOK: <b>${q.dok||1}</b></div>
+       </header>
+       <div class="vcard"><img class="pimg" src="${art}" alt="illustration"><div><b>Context:</b> ${esc(ctx)}</div></div>
+       ${exhibit}
+       <div class="vcard"><div class="emoji">${biomeIcon}</div><div><b>Place token:</b> ${esc(city.biome.replace(/_/g,' '))}</div></div>
+       <div>${esc(q.prompt)}</div>
+       <div class="choices" id="choices">${opts}</div>
+       <div id="feedback" class="small" style="margin-top:8px; min-height:22px"></div>
+       <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">
+         <button class="btn" data-close type="button">Close</button>
+       </div>
+     </div>`
+  );
+}
   const art = spriteForTopic(q,city);
   const biomeIcon = BIOME_ICON[city.biome] || '📍';
   const ctx = buildContext(q, city);
@@ -935,6 +1013,27 @@ function bindUI(){
   byId('btnLearn').onclick=openReference;
 }
 
+  function showNewspaperClipping({headline, date, story, after}) {
+  openModal(`
+    <div class="modal">
+      <div class="newspaper-clipping">
+        <div class="newspaper-headline">${esc(headline)}</div>
+        <div class="newspaper-date">${esc(date)}</div>
+        <div>${esc(story)}</div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px">
+        <button class="btn" id="btnClippingContinue" type="button">Continue</button>
+      </div>
+    </div>
+  `);
+  byId('btnClippingContinue').onclick = () => {
+    closeModal();
+    if (typeof after === 'function') after();
+  };
+}
+
+  
+  
 function init(){
   if(load()){ startTimer(); toast('Save loaded.'); } else { toast('Click “Start / Continue” to begin.'); }
   renderAll(); bindUI();
