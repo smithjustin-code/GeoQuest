@@ -344,6 +344,7 @@ dialog::backdrop {
   }
 }
 /* === Map styles (pixel vibe) === */
+/* === Map styles (pixel vibe) === */
 .mapWrap canvas{
   display:block;
   width:100%;
